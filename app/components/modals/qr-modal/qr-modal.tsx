@@ -11,40 +11,43 @@ const QRModal = ({
   qrValue: externalQrValue, // Dışarıdan QR değeri alabilmek için
 }: {
   showModal: boolean;
-  setShowModal: React.Dispatch<React.SetStateAction<boolean>>;
-  tableId: string | null;
+  setShowModal: React.Dispatch<React.SetStateAction<boolean>>; 
+  tableId: string | null; 
   qrValue?: string; // İsteğe bağlı olarak dışarıdan değer alabilir
 }) => {
   const pathname = usePathname()
-  
+
   // QR değerini belirle - dışarıdan gelen değeri öncelikle kullan
   const qrValue = externalQrValue || (() => {
     // Eğer dışarıdan değer verilmemişse otomatik oluştur
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'kafe-yonetim.vercel.app';
-    const extractedTableId = tableId || pathname?.split('/').pop();
+
+    // Masa numarasını pathname'den çıkar
+
+    // Masa numarasını "masa-X" formatında kontrol et
     
-    // Masa adını Masa-1 gibi kullanmak için, tableId ile masa adı oluşturuluyor
-    const tableName = `Masa-${extractedTableId}`;
-  
-    return `${baseUrl}/customer-menu/${tableName}`;
+    // Eğer masa numarası yoksa default bir değer döndürülebilir
+    return `${baseUrl}/customer-menu/${tableId}`;
   })();
+
   // QR kodu yazdırma işlevi
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
-    
+
     // QR kodunu SVG olarak alabilmek için gerekli
     const svgElement = document.getElementById('qr-code-svg')
     let svgData = ''
-    
+
     if (svgElement) {
       svgData = new XMLSerializer().serializeToString(svgElement)
       // SVG formatını veri url'e dönüştürme
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
       const svgUrl = URL.createObjectURL(svgBlob)
-      
-      const extractedTableId = tableId || pathname?.split('/').pop()
-      
+
+      // Yazdırma için gösterilecek masa ID'si
+      const displayTableId = `Masa-${tableId}`;
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -64,7 +67,7 @@ const QRModal = ({
               <img src="${svgUrl}" alt="QR Kod" width="200" height="200" />
             </div>
             <div class="info">
-              <p>Masa: ${extractedTableId}</p>
+              <p>Masa: ${displayTableId}</p>
               <p>Bu QR kodu okutarak menüye ulaşabilir ve sipariş verebilirsiniz.</p>
               <p>Tarih: ${new Date().toLocaleString('tr-TR')}</p>
             </div>
@@ -72,16 +75,22 @@ const QRModal = ({
         </body>
         </html>
       `
-      
+
       printWindow.document.open()
       printWindow.document.write(htmlContent)
       printWindow.document.close()
-      
+
       setTimeout(() => {
         printWindow.print()
       }, 300)
     }
   }
+
+  // Görüntülenecek masa ID'si
+  const displayTableId = (() => {
+    let rawId = tableId || pathname?.split('/').pop() || '';
+    return rawId.toLowerCase().startsWith('masa-') ? rawId : `Masa-${rawId}`;
+  })();
 
   return (
     <>
@@ -126,7 +135,7 @@ const QRModal = ({
                     )}
                   </div>
                   <div className="mt-4 text-gray-600">
-                    <p className="font-medium">Masa: {tableId || pathname?.split('/').pop()}</p>
+                    <p className="font-medium">Masa: {displayTableId}</p>
                     <p className="text-sm mt-2">QR kodu okutarak menüye erişebilir ve sipariş verebilirsiniz</p>
                   </div>
                 </div>

@@ -168,8 +168,8 @@ const Page = () => {
                     QR Görüntüle
                   </button>
                   <QRModal
-        tableId={tableId}
-        qrValue={`https://kafe-yonetim.vercel.app/customer-menu/${tableId}`}
+        tableId={"Masa-"+tableId}
+        qrValue={`https://kafe-yonetim.vercel.app/customer-menu/Masa-${tableId}`}
         showModal={showQRModal}
         setShowModal={setShowQRModal}
    
