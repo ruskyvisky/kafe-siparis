@@ -20,11 +20,14 @@ const QRModal = ({
   // QR değerini belirle - dışarıdan gelen değeri öncelikle kullan
   const qrValue = externalQrValue || (() => {
     // Eğer dışarıdan değer verilmemişse otomatik oluştur
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'kafe-yonetim.vercel.app'
-    const extractedTableId = tableId || pathname?.split('/').pop()
-    return `${baseUrl}/customer-menu/Masa-${extractedTableId}`
-  })()
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'kafe-yonetim.vercel.app';
+    const extractedTableId = tableId || pathname?.split('/').pop();
     
+    // Masa adını Masa-1 gibi kullanmak için, tableId ile masa adı oluşturuluyor
+    const tableName = `Masa-${extractedTableId}`;
+  
+    return `${baseUrl}/customer-menu/${tableName}`;
+  })();
   // QR kodu yazdırma işlevi
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
