@@ -22,7 +22,7 @@ const QRModal = ({
     // Eğer dışarıdan değer verilmemişse otomatik oluştur
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'kafe-yonetim.vercel.app'
     const extractedTableId = tableId || pathname?.split('/').pop()
-    return `${baseUrl}/customer-menu/${extractedTableId}`
+    return `${baseUrl}/customer-menu/Masa-${extractedTableId}`
   })()
     
   // QR kodu yazdırma işlevi
