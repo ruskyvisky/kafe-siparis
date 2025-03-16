@@ -1,20 +1,15 @@
 import React from 'react'
 import { createClient } from '../utils/supabase';
 import ClientMenu from './client';
+import { getProducts ,getCategory} from '../actions/product-actions';
 
 export default async function MenuPage() {
-  const supabase = await createClient();
-  const { data: urunler, error } = await supabase
-  .from('menu')
-  .select('urun_ad, urun_fiyat, kategory_id(category_name)');   
-  
-  const { data: category, error: categoryError } = await supabase
-  .from('category')
-  .select('id, category_name');
+ 
+  const { data: category } = await getCategory();
 
+  const { data: urunler,  } = await getProducts();
   
-
-  console.log(category)
+console.log(urunler)
   const tableColumns = [
     { title: 'Ürün Adı', field: 'urun_ad' },
     {title:"Fiyat", field:"urun_fiyat"},

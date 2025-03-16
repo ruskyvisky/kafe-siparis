@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-
+import { addProduct,getProducts } from "@/app/actions/product-actions";
+import { toast } from "react-toastify";
 export default function ProductAdd({
   showModal,
   setShowModal,
@@ -13,9 +14,9 @@ export default function ProductAdd({
 }) {
   // Form durumunu yönetmek için state
   const [formData, setFormData] = useState({
-    product_name: "",
-    price: "",
-    category: "",
+    urun_ad: "",
+    urun_fiyat: "",
+    kategory_id: "",
   });
 
   
@@ -31,6 +32,7 @@ export default function ProductAdd({
     }));
   };
 
+
   // Modal dışına tıklandığında kapatma işlevi
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -39,11 +41,22 @@ export default function ProductAdd({
   };
 
   // Formu gönderme işlevi
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form data:", formData);
-    // API'ye kaydetme işlemi yapılabilir
+    console.log("Giden DATAA:", formData);
+    
+    try {
+      const result = await addProduct(formData);
+      if(result.success){
+        toast.success("Ürün başarıyla eklendi");
+      }
+      
+    } catch (error) {
+      toast.error("Ürün eklenirken bir hata oluştu");
+    }
+
     setShowModal(false);
+    
   };
 
   if (!showModal) return null;
@@ -83,16 +96,16 @@ export default function ProductAdd({
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label
-                  htmlFor="product_name"
+                  htmlFor="urun_ad"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Ürün İsmi
                 </label>
                 <input
-                  id="product_name"
-                  name="product_name"
+                  id="urun_ad"
+                  name="urun_ad"
                   type="text"
-                  value={formData.product_name}
+                  value={formData.urun_ad}
                   onChange={handleChange}
                   required
                   placeholder="Ürün ismini girin"
@@ -102,16 +115,16 @@ export default function ProductAdd({
 
               <div>
                 <label
-                  htmlFor="price"
+                  htmlFor="urun_fiyat"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Fiyatı (₺)
                 </label>
                 <input
-                  id="price"
-                  name="price"
+                  id="urun_fiyat"
+                  name="urun_fiyat"
                   type="text"
-                  value={formData.price}
+                  value={formData.urun_fiyat}
                   onChange={handleChange}
                   required
                   placeholder="Fiyat bilgisini girin"
@@ -121,15 +134,15 @@ export default function ProductAdd({
 
               <div>
                 <label
-                  htmlFor="category"
+                  htmlFor="kategory_id"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Kategori
                 </label>
                 <select
-                  id="category"
-                  name="category"
-                  value={formData.category}
+                  id="kategory_id"
+                  name="kategory_id"
+                  value={formData.kategory_id}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"

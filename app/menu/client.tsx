@@ -29,6 +29,7 @@ export default function ClientMenu({ urunler, tableColumns , category }: { urunl
         tableTitle="Ürün Listesi"
         tableColumns={tableColumns}
         tableRows={urunler}
+        
       />
     </div>
   )
