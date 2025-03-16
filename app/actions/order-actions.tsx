@@ -3,73 +3,95 @@
 import { createClient } from "../utils/supabase";
 import { revalidatePath } from "next/cache";
 
-export async function addOrder(formData: any) {
+export async function addOrder(formData: FormData) {
   console.log("Server action çalıştı");
 
   try {
     const supabase = await createClient();
 
     // FormData'dan değerleri alma
-    const table_id = parseInt(formData.table_id);
-    const menu_id = parseInt(formData.menu_id);
-    const quantity = parseInt(formData.quantity);
+    const tableIdRaw = formData.get("table_id") as string;
+    // "Masa-1" formatından sayısal değeri çıkarma
+    const tableNumber = tableIdRaw.split("-")[1];
+    const table_id = parseInt(tableNumber);
 
     // Eksik veya hatalı veri kontrolü
-    if (isNaN(table_id) || isNaN(menu_id) || isNaN(quantity) || quantity <= 0) {
-      return { success: false, error: "Eksik veya hatalı veri" };
+    if (isNaN(table_id)) {
+      console.error("Geçersiz masa ID'si:", tableIdRaw);
+      return { success: false, error: "Eksik veya hatalı masa ID'si" };
     }
 
-    // 1️⃣ **Masanın açık bir siparişi var mı?**
-    let { data: existingOrder, error: orderCheckError } = await supabase
+    console.log("Table ID:", table_id);
+
+    // FormData'dan tüm girdileri alıyoruz ve işlenecek ürünleri belirliyoruz
+    const formEntries = Array.from(formData.entries());
+    const productEntries = [];
+    
+    for (const [key, value] of formEntries) {
+      if (key.startsWith("menu_id_")) {
+        const index = key.split("_")[2]; // Doğru index'i alıyoruz
+        const product_id = parseInt(value as string);
+        const quantity = parseInt(formData.get(`quantity_${index}`) as string);
+
+        if (!isNaN(product_id) && !isNaN(quantity) && quantity > 0) {
+          productEntries.push({ product_id, quantity });
+        }
+      }
+    }
+
+    if (productEntries.length === 0) {
+      console.error("Eklenecek ürün bulunamadı");
+      return { success: false, error: "Eklenecek ürün bulunamadı" };
+    }
+
+    console.log("Eklenecek ürünler:", productEntries);
+
+    // 1. Önce yeni sipariş oluştur ve order_id değerini al
+    const { data: newOrder, error: orderError } = await supabase
       .from("orders")
-      .select("id")
-      .eq("table_id", table_id)
-      .eq("status", "active")
+      .insert([{ table_id, status: true }])
+      .select()
       .single();
 
-    if (orderCheckError && orderCheckError.code !== "PGRST116") {
-      // "PGRST116" => Sonuç bulunamadığında dönen hata
-      console.error("Sipariş sorgu hatası:", orderCheckError);
-      return { success: false, error: orderCheckError.message };
+    if (orderError) {
+      console.error("Sipariş oluşturma hatası:", orderError);
+      return { success: false, error: orderError.message };
     }
 
-    let order_id;
-
-    // 2️⃣ **Eğer açık sipariş yoksa, yeni sipariş oluştur**
-    if (!existingOrder) {
-      const { data: newOrder, error: newOrderError } = await supabase
-        .from("orders")
-        .insert([{ table_id }])
-        .select()
-        .single();
-
-      if (newOrderError) {
-        console.error("Yeni sipariş oluşturma hatası:", newOrderError);
-        return { success: false, error: newOrderError.message };
-      }
-
-      order_id = newOrder.id;
-    } else {
-      order_id = existingOrder.id;
+    if (!newOrder || !newOrder.order_id) {
+      console.error("Sipariş ID'si alınamadı");
+      return { success: false, error: "Sipariş ID'si alınamadı" };
     }
 
-    // 3️⃣ **Sipariş kalemlerini `order_items` tablosuna ekle**
-    const { data, error } = await supabase
+    console.log("Yeni Sipariş:", newOrder);
+
+    // 2. Sipariş ID'sini kullanarak sipariş öğelerini ekle
+    const order_id = newOrder.order_id;
+    
+    const itemsToInsert = productEntries.map(item => ({
+      order_id: order_id,
+      product_id: item.product_id,
+      quantity: item.quantity
+    }));
+
+    console.log("Eklenecek sipariş öğeleri:", itemsToInsert);
+
+    const { data: orderItems, error: itemsError } = await supabase
       .from("order_items")
-      .insert([{ order_id, menu_id, quantity }])
+      .insert(itemsToInsert)
       .select();
 
-    if (error) {
-      console.error("Sipariş kalemi ekleme hatası:", error);
-      return { success: false, error: error.message };
+    if (itemsError) {
+      console.error("Sipariş kalemi ekleme hatası:", itemsError);
+      return { success: false, error: itemsError.message };
     }
 
-    console.log("Eklenen Sipariş Kalemi:", data);
+    console.log("Eklenen Sipariş Kalemleri:", orderItems);
 
     // Siparişler sayfasının önbelleğini temizle
     revalidatePath("/orders");
 
-    return { success: true, data };
+    return { success: true, data: { order: newOrder, items: orderItems } };
   } catch (error: any) {
     console.error("Hata:", error);
     return { success: false, error: error.message || "Bir hata oluştu" };
