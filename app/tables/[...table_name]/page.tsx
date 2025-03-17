@@ -116,7 +116,7 @@ const Page = () => {
       if (tableId) {
         fetchOrders();
       }
-    }, 10000); // 10 saniyede bir yenileme
+    }, 20000); // 20 saniyede bir yenileme
     
     // Component unmount olduğunda interval'i temizle
     return () => clearInterval(intervalId);
@@ -212,7 +212,7 @@ const Page = () => {
       
       <div className="text-sm text-gray-500 mb-4">
         Son güncelleme: {lastUpdated.toLocaleString('tr-TR')} 
-        <span className="text-xs ml-2">(10 saniyede bir otomatik yenilenir)</span>
+        <span className="text-xs ml-2">(20 saniyede bir otomatik yenilenir)</span>
       </div>
       
       {loading ? (
@@ -290,9 +290,9 @@ const Page = () => {
                   <span className="font-bold">{calculateTotal()} TL</span>
                 </div>
                 
-                <div className="flex gap-3 mt-4">
+                <div className="flex justify-center gap-3 mt-4">
                   <button
-                    className="w-1/2 bg-green-500 hover:bg-green-600 text-white font-medium p-3 rounded transition-colors"
+                    className="bg-green-500 hover:bg-green-600 text-white font-medium p-3 rounded transition-colors"
                     onClick={handlePayment}
                   >
                     Tümünü Öde
