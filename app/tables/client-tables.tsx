@@ -35,7 +35,7 @@ export default function TableList({ tables }: any) {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <div className="w-full max-w-3xl">
+      <div className="max-w-3xl">
         <div className="flex items-center justify-end mb-4">
           <input
             name="table_number"
@@ -44,7 +44,7 @@ export default function TableList({ tables }: any) {
             value={formData.table_number}
             onChange={handleInputChange}
             placeholder="Masa Numarası"
-            className="px-4 py-2 rounded-lg shadow-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="px-4 py-2 m-4 rounded-lg shadow-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
           <button 
             onClick={handleAddTable}
@@ -57,7 +57,7 @@ export default function TableList({ tables }: any) {
         {tables.length === 0 ? (
           <p className="text-gray-500 text-center text-lg">Henüz eklenmiş bir masa bulunmamakta.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {tables.map((table: any) => (
               <div key={table.table_id} className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition flex justify-between items-center">
                 <Link href={`/tables/${table.table_number}`} className="flex-1">

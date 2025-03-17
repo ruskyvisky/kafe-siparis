@@ -76,6 +76,38 @@ try {
 }
 }
 
+export async function addCategory(formData:any) {
+  console.log("Server action çalıştı");
+  
+  try {
+    const supabase = await createClient();
+    
+    // FormData'dan değerleri alma
+    const category_name = formData.category_name;
+    
+    if (!category_name) {
+      return { success: false, error: "Eksik veya hatalı veri" };
+    }
+    
+    const { data, error } = await supabase
+      .from('category')
+      .insert([{ category_name }])
+      .select();
+    
+    if (error) {
+      console.error("Supabase Hatası:", error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log("Eklenen Veri:", data);
+
+    revalidatePath('/category'); // Menü sayfanızın yolu
+    return { success: true, data };
+  } catch (error:any) {
+    console.error("Hata:", error);
+    return { success: false, error: error.message || "Bir hata oluştu" };
+  }}
+
 export async function deleteProduct(id:number){
   const supabase = await createClient()
   try {

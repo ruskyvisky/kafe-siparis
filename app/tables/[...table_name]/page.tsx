@@ -6,6 +6,7 @@ import { getOrdersForTable } from '../../actions/table-actions';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faQrcode } from '@fortawesome/free-solid-svg-icons';
 import QRModal from '../../components/modals/qr-modal/qr-modal';
+
 // Tip Tanımlamaları
 interface OrderItem {
   order_item_id: number;
@@ -38,6 +39,7 @@ const Page = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   // URL'den masa numarasını al
   const pathname = usePathname();
@@ -45,65 +47,79 @@ const Page = () => {
   const tableIdMatch = pathname.match(/Masa-(\d+)$/);
   const tableId = tableIdMatch ? tableIdMatch[1] : "1"; // Varsayılan olarak 1
   
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Konsola debugging bilgisi
+      console.log('Masa ID ile sorgu yapılıyor:', tableId);
+      
+      // Backend'den siparişleri al
+      const data = await getOrdersForTable(tableId);
+      
+      // Veriyi detaylı inceleyin
+      console.log('Siparişler ham veri:', JSON.stringify(data, null, 2));
+      
+      // Veriyi kontrol et ve dönüştür
+      const formattedOrders = data.map((order: any) => {
+        // Eğer created_at varsa ve orderTime yoksa, created_at'i orderTime olarak kullan
+        if (!order.orderTime && order.created_at) {
+          order.orderTime = new Date(order.created_at).toLocaleString('tr-TR');
+        }
         
-        // Konsola debugging bilgisi
-        console.log('Masa ID ile sorgu yapılıyor:', tableId);
+        // items dizisini kontrol et
+        if (!order.items || !Array.isArray(order.items)) {
+          order.items = [];
+        }
         
-        // Backend'den siparişleri al
-        const data = await getOrdersForTable(tableId);
-        
-        // Veriyi detaylı inceleyin
-        console.log('Siparişler ham veri:', JSON.stringify(data, null, 2));
-        
-        // Veriyi kontrol et ve dönüştür
-        const formattedOrders = data.map((order: any) => {
-          // Eğer created_at varsa ve orderTime yoksa, created_at'i orderTime olarak kullan
-          if (!order.orderTime && order.created_at) {
-            order.orderTime = new Date(order.created_at).toLocaleString('tr-TR');
-          }
+        // Her öğeyi incele ve fiyat bilgisini ekle
+        order.items = order.items.map((item: any) => {
+          console.log('İşlenen ürün verisi:', item);
           
-          // items dizisini kontrol et
-          if (!order.items || !Array.isArray(order.items)) {
-            order.items = [];
-          }
+          // Ürün nesnesini kontrol et
+          // 'menu' tablosundan gelen bilgiler olabilir
+          const product = item.product || {};
           
-          // Her öğeyi incele ve fiyat bilgisini ekle
-          order.items = order.items.map((item: any) => {
-            console.log('İşlenen ürün verisi:', item);
-            
-            // Ürün nesnesini kontrol et
-            // 'menu' tablosundan gelen bilgiler olabilir
-            const product = item.product || {};
-            
-            return {
-              ...item,
-              urun_ad: item.urun_ad || product.urun_ad || 'Bilinmiyor',
-              // Fiyat bilgisi için önce product.urun_fiyat'ı kontrol et
-              urun_fiyat: product.urun_fiyat  || 50 // Varsayılan fiyat
-            };
-          });
-          
-          return order as Order;
+          return {
+            ...item,
+            urun_ad: item.urun_ad || product.urun_ad || 'Bilinmiyor',
+            // Fiyat bilgisi için önce product.urun_fiyat'ı kontrol et
+            urun_fiyat: product.urun_fiyat || 50 // Varsayılan fiyat
+          };
         });
         
-        console.log('Düzenlenmiş siparişler:', formattedOrders);
-        setOrders(formattedOrders);
-      } catch (err) {
-        console.error('Siparişler alınırken hata:', err);
-        setError('Siparişler alınırken bir hata oluştu.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
+        return order as Order;
+      });
+      
+      console.log('Düzenlenmiş siparişler:', formattedOrders);
+      setOrders(formattedOrders);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Siparişler alınırken hata:', err);
+      setError('Siparişler alınırken bir hata oluştu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // İlk yükleme için useEffect
+  useEffect(() => {
     if (tableId) {
       fetchOrders();
     }
+  }, [tableId]);
+  
+  // Polling mekanizması için useEffect - her 10 saniyede bir verileri yenile
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (tableId) {
+        fetchOrders();
+      }
+    }, 10000); // 10 saniyede bir yenileme
+    
+    // Component unmount olduğunda interval'i temizle
+    return () => clearInterval(intervalId);
   }, [tableId]);
 
   // Tarih formatını düzeltmek için yardımcı fonksiyon
@@ -117,13 +133,17 @@ const Page = () => {
     }
   };
   
+  // Manuel yenileme fonksiyonu
+  const handleRefresh = () => {
+    fetchOrders();
+  };
+  
   // Tek bir sipariş için toplam tutarı hesapla
   const calculateOrderTotal = (order: Order) => {
     let total = 0;
     order.items.forEach(item => {
-      console.log("fiyat" ,order.items)
       // Fiyat bilgisini al
-      const price = item.price || 50  // Varsayılan 50 TL
+      const price = item.price || item.urun_fiyat || 50;  // Önce price, sonra urun_fiyat, varsayılan 50 TL
       total += price * item.quantity;
     });
     return total.toFixed(2);
@@ -134,7 +154,7 @@ const Page = () => {
     let total = 0;
     orders.forEach(order => {
       order.items.forEach(item => {
-        const price = item.price || 50;
+        const price = item.price || item.urun_fiyat || 50;
         total += price * item.quantity;
       });
     });
@@ -153,36 +173,52 @@ const Page = () => {
     alert(`Toplam Tutar: ${calculateTotal()} TL. Tüm siparişler için ödeme işlemi başlatılıyor...`);
     // Gerçek bir uygulamada burada backend'e ödeme isteği gönderilir
   };
+  
   const [showQRModal, setShowQRModal] = useState(false);
 
   return (
     <div className="container mx-auto p-4">
       <div className='flex justify-between items-center'>
-        
-      <h1 className="text-xl font-bold mb-4">Masa {tableId} Siparişleri</h1>
-      <button
-                    className=" bg-blue-500 hover:bg-blue-600 text-white font-medium p-3 rounded transition-colors my-4"
-                    onClick={() => setShowQRModal(true)}
-                  >
-                    <FontAwesomeIcon icon={faQrcode} className="mr-2" />
-                    QR Görüntüle
-                  </button>
-                  <QRModal
-        tableId={"Masa-"+tableId}
-        qrValue={`https://kafe-yonetim.vercel.app/customer-menu/Masa-${tableId}`}
-        showModal={showQRModal}
-        setShowModal={setShowQRModal}
-   
-      />
+        <h1 className="text-xl font-bold mb-4">Masa {tableId} Siparişleri</h1>
+        <div className="flex gap-2">
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium p-3 rounded transition-colors my-4"
+            onClick={() => setShowQRModal(true)}
+          >
+            <FontAwesomeIcon icon={faQrcode} className="mr-2" />
+            QR Görüntüle
+          </button>
+          <button
+            className="bg-green-500 hover:bg-green-600 text-white font-medium p-3 rounded transition-colors my-4"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            {loading ? 'Yükleniyor...' : 'Yenile'}
+          </button>
+        </div>
+        <QRModal
+          tableId={"Masa-"+tableId}
+          qrValue={`https://kafe-yonetim.vercel.app/customer-menu/Masa-${tableId}`}
+          showModal={showQRModal}
+          setShowModal={setShowQRModal}
+        />
       </div>
+      
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
       
+      <div className="text-sm text-gray-500 mb-4">
+        Son güncelleme: {lastUpdated.toLocaleString('tr-TR')} 
+        <span className="text-xs ml-2">(10 saniyede bir otomatik yenilenir)</span>
+      </div>
+      
       {loading ? (
-        <p className="text-gray-600">Yükleniyor...</p>
+        <div className="flex items-center justify-center p-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
       ) : (
         <div className="orders-list space-y-4">
           {orders.length === 0 ? (
@@ -261,8 +297,6 @@ const Page = () => {
                   >
                     Tümünü Öde
                   </button>
-                  
-                  
                 </div>
               </div>
             </>

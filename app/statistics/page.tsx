@@ -1,8 +1,12 @@
 import React from 'react'
+import UnderConstruction from '../components/designingComponent/designingComponent'
 
 const Statistics = () => {
   return (
-    <div>Statistics</div>
+    <div>
+
+      <UnderConstruction/>
+    </div>
   )
 }
 
